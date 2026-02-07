@@ -1,0 +1,85 @@
+import tensorflow as tf
+import pandas as pd
+import numpy as np
+import os
+
+# Limpa a tela e avisos
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+print("🧠 INICIANDO SISTEMA DE APRENDIZADO NEURAL...")
+
+# --- 1. IMPORTAÇÃO E LEITURA (O Estudo) ---
+try:
+    # A IA lê o "livro de estudos" (o CSV que geramos antes)
+    arquivo = pd.read_csv('historico_piloto.csv')
+    print(f"📚 Arquivo carregado! {len(arquivo)} exemplos encontrados.")
+except FileNotFoundError:
+    print("❌ ERRO: Rode o código do 'Passado' primeiro para gerar o CSV!")
+    exit()
+
+# Separa as colunas: 
+# X = O que a IA vê (Distância e Velocidade)
+# y = O que a IA tem que decidir (Frear ou Não)
+X = arquivo[['distancia', 'velocidade']].values
+y = arquivo['resultado_freio'].values
+
+# NORMALIZAÇÃO (Importante: transformar tudo em números entre 0 e 1)
+# Como sabemos que o máximo é aprox 200, dividimos por 200.
+X_norm = X / 200.0
+
+# --- 2. CRIAÇÃO DO NEURÔNIO (A Estrutura) ---
+model = tf.keras.Sequential([
+    # Camada de Entrada (2 valores) -> Oculta (8 neurônios)
+    tf.keras.layers.Dense(8, input_shape=(2,), activation='relu'),
+    # Camada Oculta Extra (4 neurônios) para entender padrões complexos
+    tf.keras.layers.Dense(4, activation='relu'),
+    # Camada de Saída (1 neurônio): 0 a 1 (Probabilidade)
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# --- 3. O TREINAMENTO (A Prática) ---
+print("\n🏋️  Treinando a rede neural com os dados do arquivo...")
+# A IA vai ler o arquivo 50 vezes (epochs) para aprender bem
+model.fit(X_norm, y, epochs=50, verbose=0)
+print("✅ Treinamento concluído! A IA agora sabe dirigir.")
+
+# --- 4. INTERAÇÃO COM O USUÁRIO (O Teste Real) ---
+print("\n" + "="*40)
+print("   🚗 CARRO AUTÔNOMO - MODO MANUAL   ")
+print("="*40)
+print("A IA aprendeu sozinha lendo o CSV. Teste ela agora!")
+print("(Digite 'sair' para encerrar)\n")
+
+while True:
+    try:
+        entrada_dist = input("📏 Distância do obstáculo (m): ")
+        if entrada_dist.lower() == 'sair': break
+        
+        entrada_vel = input("🚀 Velocidade do carro (km/h): ")
+        if entrada_vel.lower() == 'sair': break
+        
+        # Converte o texto do usuário para números
+        dist = float(entrada_dist)
+        vel = float(entrada_vel)
+        
+        # --- O NEURÔNIO ENTRA EM AÇÃO AQUI ---
+        # 1. Prepara os dados (Normaliza igual ao treino)
+        dados_novos = np.array([[dist, vel]]) / 200.0
+        
+        # 2. O neurônio calcula a previsão (Sem IFs, apenas matemática de pesos)
+        previsao = model.predict(dados_novos, verbose=0)[0][0]
+        
+        # 3. Exibe o resultado
+        chance = previsao * 100
+        print(f"\n🧠 Cérebro da IA: {chance:.1f}% de certeza de colisão.")
+        
+        if previsao > 0.5:
+            print("🛑 DECISÃO: PISAR NO FREIO!\n")
+        else:
+            print("🟢 DECISÃO: SEGUIR VIAGEM.\n")
+            
+    except ValueError:
+        print("⚠️  Erro: Digite apenas números.")
+
